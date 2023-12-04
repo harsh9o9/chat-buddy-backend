@@ -1,0 +1,18 @@
+# npm
+node_modules
+package-lock.json
+*.log
+*.gz
+
+# dotenv environment variables file
+.env
+.env.test
+.env*.local
+
+# Coveralls
+.nyc_output
+coverage
+
+# Benchmarking
+benchmarks/graphs
+
