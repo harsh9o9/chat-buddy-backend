@@ -27,10 +27,10 @@ export const ChatEvents = Object.freeze({
 });
 
 const production = {
-  URL: "https://chat-buddy-backend-36mj.onrender.com",
+  CORS_URL: "https://chat-buddy-harsh9o9.vercel.app",
 };
 const development = {
-  URL: "http://localhost:3000",
+  CORS_URL: "http://localhost:3000",
 };
 export const config =
   process.env.NODE_ENV === "development" ? development : production;
