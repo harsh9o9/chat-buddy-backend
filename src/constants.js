@@ -25,3 +25,12 @@ export const ChatEvents = Object.freeze({
   // ? when participant starts typing
   TYPING_EVENT: "typing",
 });
+
+const production = {
+  URL: "https://chat-buddy-backend-36mj.onrender.com",
+};
+const development = {
+  URL: "http://localhost:3000",
+};
+export const config =
+  process.env.NODE_ENV === "development" ? development : production;

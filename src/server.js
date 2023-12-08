@@ -1,14 +1,15 @@
-import { createServer } from "http";
-import { Server } from "socket.io";
-import cookieParser from "cookie-parser";
-import express from "express";
-import morgan from "morgan";
-import cors from "cors";
-import userRouter from "./routes/user.routes.js";
 import chatRouter from "./routes/chat-app/chat.routes.js";
-import messageRouter from "./routes/chat-app/message.routes.js";
+import cors from "cors";
+import cookieParser from "cookie-parser";
 import errorHandler from "./middlewares/error.middlewares.js";
+import express from "express";
+import messageRouter from "./routes/chat-app/message.routes.js";
+import morgan from "morgan";
+import userRouter from "./routes/user.routes.js";
+import { config } from "./constants.js";
+import { createServer } from "http";
 import { initializeSocketIO } from "./socket/index.js";
+import { Server } from "socket.io";
 
 const app = express();
 const httpServer = createServer(app);
@@ -16,7 +17,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   pingTimeout: 60000,
   cors: {
-    origin: process.env.CORS_ORIGIN,
+    origin: config.url,
     credentials: true,
   },
 });
@@ -26,7 +27,7 @@ app.set("io", io);
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: config.url,
     credentials: true,
   })
 );
