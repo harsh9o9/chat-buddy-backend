@@ -5,7 +5,8 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "start": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+    "start": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
+    "debug": "nodemon -r dotenv/config --inspect --experimental-json-modules src/index.js"
   },
   "author": "Harsh Bhardwaj",
   "license": "ISC",

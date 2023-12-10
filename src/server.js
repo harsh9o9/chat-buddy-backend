@@ -17,7 +17,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   pingTimeout: 60000,
   cors: {
-    origin: config.url,
+    origin: [config.CORS_URL],
     credentials: true,
   },
 });
@@ -27,15 +27,16 @@ app.set("io", io);
 
 app.use(
   cors({
-    origin: config.url,
+    origin: [config.CORS_URL],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
   })
 );
 
 app.use(morgan("dev"));
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(express.json());
 
 app.use("/api/users", userRouter);
 app.use("/api/chat-app/chats", chatRouter);

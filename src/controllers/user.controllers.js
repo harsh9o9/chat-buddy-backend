@@ -2,21 +2,7 @@ import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-
-const createJWT = async (userId) => {
-  try {
-    const user = await User.findById(userId);
-    const accessToken = user.generateAccessToken();
-
-    await user.save({ validateBeforeSave: false });
-    return accessToken;
-  } catch (error) {
-    throw new ApiError(
-      500,
-      "Something went wrong while generating the access token"
-    );
-  }
-};
+import generateAccessToken from "../utils/generateAccessToken.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { username, fullName, email, password } = req.body;
@@ -42,8 +28,9 @@ const registerUser = asyncHandler(async (req, res) => {
     fullName,
     password,
   });
-
   await user.save();
+
+  const accessToken = generateAccessToken(user._id, user.email, user.username);
 
   const createdUser = await User.findById(user._id).select("-password");
 
@@ -51,8 +38,11 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Something went wrong while registering the user");
   }
 
+  const accessTokenOptions = { httpOnly: true, withCredentials: true };
+
   return res
     .status(201)
+    .cookie("accessToken", accessToken, accessTokenOptions)
     .json(
       new ApiResponse(
         200,
@@ -81,15 +71,15 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid user credentials");
   }
 
-  const accessToken = await createJWT(user._id);
+  const accessToken = generateAccessToken(user._id, user.email, user.username);
 
   const userDataToSend = await User.findById(user._id).select("-password");
 
-  const options = { httpOnly: true, sameSite: "lax" };
+  const accessTokenOptions = { httpOnly: true, withCredentials: true };
 
   return res
     .status(200)
-    .cookie("accessToken", accessToken, options) // set the access token in the cookie
+    .cookie("accessToken", accessToken, accessTokenOptions)
     .json(
       new ApiResponse(
         200,
