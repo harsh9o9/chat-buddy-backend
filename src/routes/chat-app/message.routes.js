@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyJWT } from "../../middlewares/auth.middlewares.js";
+import { requireAuthentication } from "../../middlewares/auth.middlewares.js";
 import { mongoIdPathVariableValidator } from "../../validators/common/mongodb.validator.js";
 import errorValidator from "../../validators/errorValidator.js";
 import {
@@ -10,7 +10,7 @@ import { sendMessageValidator } from "../../validators/chat-app/message.validato
 
 const router = Router();
 
-router.use(verifyJWT);
+router.use(requireAuthentication);
 
 router
   .route("/:chatId")

@@ -3,7 +3,7 @@ import { Chat } from "../../models/chat-app/chat.modals.js";
 import { User } from "../../models/user.models.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
-import { ApiError } from "../../utils/ApiError.js";
+import { CustomError } from "../../utils/CustomError.js";
 import { emitSocketEvent } from "../../socket/index.js";
 import { ChatEvents } from "../../constants.js";
 
@@ -111,7 +111,6 @@ const searchAvailableUsers = asyncHandler(async (req, res) => {
 // create a one on one chat with another user (adds a new one on one chat entry in chat document)
 const createOrGetAOneOnOneChat = asyncHandler(async (req, res) => {
   const { receiverId } = req.params;
-  console.log("req.user: ", req.user);
   console.log("receiverId: ", receiverId);
 
   // Check if it's a valid receiver
@@ -120,13 +119,13 @@ const createOrGetAOneOnOneChat = asyncHandler(async (req, res) => {
 
   if (!receiver) {
     console.log("in you receiver");
-    throw new ApiError(404, "Receiver does not exist");
+    throw new CustomError("Receiver does not exist", 404);
   }
 
   // check if receiver is not the user who is requesting a chat
   if (receiver._id.toString() === req.user._id.toString()) {
     console.log("in you cannot with youreself");
-    throw new ApiError(400, "You cannot chat with yourself");
+    throw new CustomError("You cannot chat with yourself", 400);
   }
 
   // finding chats with user and receiver in it, if any
@@ -178,7 +177,7 @@ const createOrGetAOneOnOneChat = asyncHandler(async (req, res) => {
   const payload = createdChat[0]; // store the aggregation result
 
   if (!payload) {
-    throw new ApiError(500, "Internal server error");
+    throw new CustomError("Internal server error", 500);
   }
 
   payload?.participants.forEach((participant) => {

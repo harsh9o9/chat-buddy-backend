@@ -1,6 +1,6 @@
 import cookie from "cookie";
 import jwt from "jsonwebtoken";
-import { ApiError } from "../utils/ApiError.js";
+import { CustomError } from "../utils/CustomError.js";
 import { User } from "../models/user.models.js";
 import { ChatEvents } from "../constants.js";
 
@@ -34,25 +34,31 @@ const mountJoinChatEvent = (socket) => {
 const initializeSocketIO = (io) => {
   io.on("connection", async (socket) => {
     try {
-      const cookies = cookie.parse(socket.handshake.headers?.cookie || ""); // needs withCredentails: true
-
-      let token = cookies?.accessToken;
+      let token = socket.handshake.auth?.token || ""; // needs withCredentails: true
+      token = token.split(" ")[1];
+      // let token = cookies?.accessToken;
+      // console.log("parsed: ", cookie.parse(token));
 
       if (!token) {
+        console.log("one1");
         // if not token in cookies then check in auth handshake
         token = socket.handshake?.auth || "";
       }
-
+      console.log(token);
       if (!token) {
-        throw new ApiError(401, "Un-authorized handshake. Token is missing");
+        console.log("two2");
+        throw new CustomError("Un-authorized handshake. Token is missing", 401);
       }
-
-      const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-
+      console.log("decodedToken1: ", process.env.AUTH_ACCESS_TOKEN_SECRET);
+      const decodedToken = jwt.verify(
+        token,
+        process.env.AUTH_ACCESS_TOKEN_SECRET
+      );
+      console.log("decodedToken: ", decodedToken);
       const user = await User.findById(decodedToken?._id).select("-password");
 
       if (!user) {
-        throw new ApiError(401, "Un-authorized handshake. Token is invalid");
+        throw new CustomError("Un-authorized handshake. Token is invalid", 401);
       }
 
       socket.user = user; // mount te user object to the socket
@@ -74,7 +80,7 @@ const initializeSocketIO = (io) => {
         }
       });
     } catch (err) {
-      console.log("in initializeSocketIO error");
+      console.log("in initializeSocketIO error: ", err);
       socket.emit(
         ChatEvents.SOCKET_ERROR_EVENT,
         err?.message || "Something went wrong while connecting to the socket."

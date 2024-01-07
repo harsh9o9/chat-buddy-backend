@@ -34,3 +34,9 @@ const development = {
 };
 export const config =
   process.env.NODE_ENV === "development" ? development : production;
+
+export const corsOptions = {
+  origin: config.CORS_URL,
+  credentials: true,
+  exposedHeaders: ["WWW-Authenticate"],
+};

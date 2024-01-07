@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { Chat } from "../../models/chat-app/chat.modals.js";
-import { ApiError } from "../../utils/ApiError.js";
+import { CustomError } from "../../utils/CustomError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ChatMessage } from "../../models/chat-app/message.models.js";
@@ -42,12 +42,12 @@ const getAllMessages = asyncHandler(async (req, res) => {
 
   if (!selectedChat) {
     console.log("message controller 404");
-    throw new ApiError(404, "Chat does not exist");
+    throw new CustomError("Chat does not exist", 404);
   }
 
   // Only send messages if the logged in user is a part of the chat he is requesting messages of
   if (!selectedChat.participants?.includes(req.user?._id)) {
-    throw new ApiError(400, "User is not a part of this chat");
+    throw new CustomError("User is not a part of this chat", 400);
   }
 
   const messages = await ChatMessage.aggregate([
@@ -76,14 +76,14 @@ const sendMessage = asyncHandler(async (req, res) => {
   const { content } = req.body;
 
   if (!content) {
-    throw new ApiError(400, "Message content is required");
+    throw new CustomError("Message content is required", 400);
   }
 
   const selectedChat = await Chat.findById(chatId);
 
   if (!selectedChat) {
     console.log("message controller 404 2");
-    throw new ApiError(404, "Chat does not exist");
+    throw new CustomError("Chat does not exist", 404);
   }
 
   // Create a new message instance with appropriate metadata
@@ -118,7 +118,7 @@ const sendMessage = asyncHandler(async (req, res) => {
   const receivedMessage = messages[0];
 
   if (!receivedMessage) {
-    throw new ApiError(500, "Internal server error");
+    throw new CustomError("Internal server error", 500);
   }
 
   chat?.participants.forEach((participantId) => {
