@@ -1,5 +1,5 @@
 # Chat Buddy Backend
-Backend for chat buddy realtime chatting website, build using socket.io and Express.js
+Backend for chat buddy realtime chatting website, build using socket.io and Express.js ([link](https://chat-buddy-harsh9o9.vercel.app/chat))
 
 ## Technologies:
 - Socket.io
