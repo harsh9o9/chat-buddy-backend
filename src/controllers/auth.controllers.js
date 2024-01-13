@@ -6,6 +6,8 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import sendEmail from "../services/sendEmail.js";
 import AuthorizationError from "../utils/AuthorizationError.js";
+import { emitSocketEventExceptUser } from "../socket/index.js";
+import { ChatEvents } from "../constants.js";
 
 // Top-level constants
 const REFRESH_TOKEN = {
@@ -118,10 +120,7 @@ const logout = asyncHandler(async (req, res) => {
     .createHmac("sha256", REFRESH_TOKEN.secret)
     .update(refreshToken)
     .digest("hex");
-  console.log('rTknHash: ', rTknHash);
-  console.log('user.tokens: ', user.tokens);
   let filteredTokens = user.tokens.filter((tokenObj) => tokenObj.token !== rTknHash);
-  console.log('filteredTokens: ', filteredTokens);
   user.tokens = filteredTokens;
   await user.save();
 
@@ -147,6 +146,8 @@ const logoutAllDevices = asyncHandler(async (req, res) => {
   user.tokens = undefined;
   await user.save();
 
+  emitSocketEventExceptUser(req, userId, ChatEvents.MASTER_LOGOUT);
+  
   // Set cookie expiry to past date to mark for destruction
   const expireCookieOptions = Object.assign({}, REFRESH_TOKEN.cookie.options, {
     expires: new Date(1),

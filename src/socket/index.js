@@ -90,15 +90,28 @@ const initializeSocketIO = (io) => {
 };
 
 /**
- *
+ * emits a socket event for everyone in room
  * @param req - Request object to access the `io` instance set at the entry point
  * @param {string} roomId - Room where the event should be emitted
  * @param {ChatEvents} event - Event that should be emitted
  * @param {any} payload - Data that should be sent when emitting the event
  * @description Utility function responsible to abstract the logic of socket emission via the io instance
  */
-const emitSocketEvent = (req, roomId, event, payload) => {
+const emitSocketEventToAll = (req, roomId, event, payload = {}) => {
   req.app.get("io").in(roomId).emit(event, payload);
 };
 
-export { initializeSocketIO, emitSocketEvent };
+/**
+ * emits a socket event for everyone except sending user in room
+ * @param req - Request object to access the `io` instance set at the entry point
+ * @param {string} roomId - Room where the event should be emitted
+ * @param {ChatEvents} event - Event that should be emitted
+ * @param {any} payload - Data that should be sent when emitting the event
+ * @description Utility function responsible to abstract the logic of socket emission via the io instance
+ */
+
+const emitSocketEventExceptUser = (req, roomId, event, payload = {}) => {
+  req.app.get("io").to(roomId).emit(event, payload);
+};
+
+export { initializeSocketIO, emitSocketEventToAll, emitSocketEventExceptUser };

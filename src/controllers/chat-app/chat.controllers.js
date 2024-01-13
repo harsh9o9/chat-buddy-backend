@@ -4,7 +4,7 @@ import { User } from "../../models/user.models.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { CustomError } from "../../utils/CustomError.js";
-import { emitSocketEvent } from "../../socket/index.js";
+import { emitSocketEventToAll } from "../../socket/index.js";
 import { ChatEvents } from "../../constants.js";
 
 // some common aggregation that needs to be applied multiple times (basically it replaces details of users present in participant field)
@@ -184,7 +184,7 @@ const createOrGetAOneOnOneChat = asyncHandler(async (req, res) => {
     console.log("in participant: ", participant._id.toString());
     if (participant._id.toString() === req.user._id.toString()) return;
     // emit event to other participants with new chat as a payload
-    emitSocketEvent(
+    emitSocketEventToAll(
       req,
       participant?._id.toString(),
       ChatEvents.NEW_CHAT_EVENT,

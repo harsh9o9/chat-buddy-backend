@@ -4,7 +4,7 @@ import { CustomError } from "../../utils/CustomError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ChatMessage } from "../../models/chat-app/message.models.js";
-import { emitSocketEvent } from "../../socket/index.js";
+import { emitSocketEventToAll } from "../../socket/index.js";
 import { ChatEvents } from "../../constants.js";
 
 // adds username, email, avatar, fullName of sender
@@ -125,7 +125,7 @@ const sendMessage = asyncHandler(async (req, res) => {
     // avoiding emitting event to the user who is sending the message
     if (participantId.toString() === req.user._id.toString()) return;
 
-    emitSocketEvent(
+    emitSocketEventToAll(
       req,
       participantId.toString(),
       ChatEvents.MESSAGE_RECEIVED_EVENT,
