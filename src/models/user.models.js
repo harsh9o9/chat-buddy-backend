@@ -179,6 +179,7 @@ UserSchema.methods.generateRefreshToken = async function () {
   return refreshToken;
 };
 
+// Not used yet, will be used in password reset flow
 UserSchema.methods.generateResetToken = async function () {
   const resetTokenValue = crypto.randomBytes(20).toString("base64url");
   const resetTokenSecret = crypto.randomBytes(10).toString("hex");

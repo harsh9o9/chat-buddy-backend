@@ -44,8 +44,6 @@ const loginUser = asyncHandler(async (req, res) => {
   const accessToken = await user.generateAcessToken(); // Create Access Token
   const refreshToken = await user.generateRefreshToken(); // Create Refresh Token
 
-  console.log("accessToken: ", accessToken);
-  console.log("refreshToken: ", refreshToken);
   // SET refresh Token cookie in response
   res.cookie(
     REFRESH_TOKEN.cookie.name,
@@ -110,6 +108,7 @@ const logout = asyncHandler(async (req, res) => {
   // Authenticated user ID attached on `req` by authentication middleware
   const userId = req.userId;
   const user = await User.findById(userId);
+  console.log('user:', user);
 
   const cookies = req.cookies;
   // const authHeader = req.header("Authorization");
@@ -119,7 +118,11 @@ const logout = asyncHandler(async (req, res) => {
     .createHmac("sha256", REFRESH_TOKEN.secret)
     .update(refreshToken)
     .digest("hex");
-  user.tokens = user.tokens.filter((tokenObj) => tokenObj.token !== rTknHash);
+  console.log('rTknHash: ', rTknHash);
+  console.log('user.tokens: ', user.tokens);
+  let filteredTokens = user.tokens.filter((tokenObj) => tokenObj.token !== rTknHash);
+  console.log('filteredTokens: ', filteredTokens);
+  user.tokens = filteredTokens;
   await user.save();
 
   // Set cookie expiry to past date so it is destroyed
@@ -129,7 +132,7 @@ const logout = asyncHandler(async (req, res) => {
 
   // Destroy refresh token cookie
   res.cookie(REFRESH_TOKEN.cookie.name, "", expireCookieOptions);
-  res.status(205).json({
+  res.status(200).json({
     success: true,
   });
 });
@@ -151,7 +154,7 @@ const logoutAllDevices = asyncHandler(async (req, res) => {
 
   // Destroy refresh token cookie
   res.cookie(REFRESH_TOKEN.cookie.name, "", expireCookieOptions);
-  res.status(205).json({
+  res.status(200).json({
     success: true,
   });
 });
@@ -199,7 +202,7 @@ const refreshAccessToken = async (req, res, next) => {
 
     // GENERATE NEW ACCESSTOKEN
     const newAtkn = await userWithRefreshTkn.generateAcessToken();
-    console.log(newAtkn);
+    console.log('newAtkn: ', newAtkn);
     // GENERATE NEW REFRESHTOKEN
     // const newRtkn = await userWithRefreshTkn.generateRefreshToken();
 
