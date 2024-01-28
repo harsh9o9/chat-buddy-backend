@@ -1,5 +1,5 @@
-import mongoose from "mongoose";
 import { CustomError } from "../utils/CustomError.js";
+import mongoose from "mongoose";
 /**
  * @description This middleware is responsible to catch the errors from any request handler wrapped inside the {@link asyncHandler}
  */
@@ -7,7 +7,7 @@ import { CustomError } from "../utils/CustomError.js";
 const errorHandler = (err, req, res, next) => {
   let error = err;
 
-  console.log("in errorhandler: ", err);
+  console.log("in errorhandler: ", error);
 
   /**
    * if error is not instance of {@link CustomError} then create a instance to maitain consistency

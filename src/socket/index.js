@@ -1,8 +1,9 @@
-import cookie from "cookie";
-import jwt from "jsonwebtoken";
+import AuthorizationError from "../utils/AuthorizationError.js";
+import { ChatEvents } from "../constants.js";
 import { CustomError } from "../utils/CustomError.js";
 import { User } from "../models/user.models.js";
-import { ChatEvents } from "../constants.js";
+import cookie from "cookie";
+import jwt from "jsonwebtoken";
 
 // This function is responsible to allow user to join the chat represented by chatId (chatId). event happens when user switches between the chats
 const mountJoinChatEvent = (socket) => {
@@ -81,10 +82,18 @@ const initializeSocketIO = (io) => {
       });
     } catch (err) {
       console.log("in initializeSocketIO error: ", err);
-      socket.emit(
-        ChatEvents.SOCKET_ERROR_EVENT,
-        err?.message || "Something went wrong while connecting to the socket."
-      );
+      if (err?.name === "JsonWebTokenError") {
+        console.log('in JsonWebTokenError');
+        return new AuthorizationError(err, undefined, "You are unauthenticated", {
+            realm: "reauth",
+            error_description: "token error",
+          }
+        );
+      }
+      // socket.emit(
+      //   ChatEvents.SOCKET_ERROR_EVENT,
+      //   err?.message || "Something went wrong while connecting to the socket."
+      // );
     }
   });
 };

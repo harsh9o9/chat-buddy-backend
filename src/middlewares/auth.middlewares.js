@@ -1,6 +1,6 @@
-import { User } from "../models/user.models.js";
 import AuthorizationError from "../utils/AuthorizationError.js";
 import { CustomError } from "../utils/CustomError.js";
+import { User } from "../models/user.models.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 
@@ -70,7 +70,7 @@ export const requireAuthentication = asyncHandler(async (req, res, next) => {
       error: "expired_access_token",
       error_description: "access token is expired",
     };
-    if (err.name === "TokenExpiredError")
+    if (err.name === "TokenExpiredError" || err.name === "JsonWebTokenError")
       return next(
         new AuthorizationError(
           "Authentication Error",

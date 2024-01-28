@@ -1,13 +1,13 @@
-import { User } from "../models/user.models.js";
-import { CustomError } from "../utils/CustomError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
-import jwt from "jsonwebtoken";
-import crypto from "crypto";
-import sendEmail from "../services/sendEmail.js";
 import AuthorizationError from "../utils/AuthorizationError.js";
-import { emitSocketEventExceptUser } from "../socket/index.js";
 import { ChatEvents } from "../constants.js";
+import { CustomError } from "../utils/CustomError.js";
+import { User } from "../models/user.models.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import crypto from "crypto";
+import { emitSocketEventExceptUser } from "../socket/index.js";
+import jwt from "jsonwebtoken";
+import sendEmail from "../services/sendEmail.js";
 
 // Top-level constants
 const REFRESH_TOKEN = {
@@ -165,8 +165,7 @@ const logoutAllDevices = asyncHandler(async (req, res) => {
 const refreshAccessToken = async (req, res, next) => {
   try {
     const cookies = req.cookies;
-    console.log("cookies: ", cookies);
-    // const authHeader = req.header("Authorization");
+
     const refreshToken = cookies[REFRESH_TOKEN.cookie.name];
 
     if (!refreshToken) {
@@ -216,8 +215,7 @@ const refreshAccessToken = async (req, res, next) => {
       accessToken: newAtkn,
     });
   } catch (error) {
-    console.log(error);
-    if (error?.name === "JsonWebTokenError")
+    if ( ["JsonWebTokenError", "TokenExpiredError"].includes(error?.name))
       return next(
         new AuthorizationError(error, undefined, "You are unauthenticated", {
           realm: "reauth",
