@@ -29,16 +29,36 @@ export const ChatEvents = Object.freeze({
 });
 
 const production = {
-  CORS_URL: "https://chat-buddy-harsh9o9.vercel.app",
+    URL: ['https://chat-buddy-harsh9o9.vercel.app', 'www.chatbuddy.online']
 };
 const development = {
-  CORS_URL: "http://localhost:3000",
+    URL: 'http://localhost:3000'
 };
 export const config =
   process.env.NODE_ENV === "development" ? development : production;
 
 export const corsOptions = {
-  origin: config.CORS_URL,
-  credentials: true,
-  exposedHeaders: ["WWW-Authenticate"],
+    origin: config.URL,
+    credentials: true,
+    exposedHeaders: ['WWW-Authenticate']
+};
+
+export const REFRESH_TOKEN = {
+    secret: process.env.AUTH_REFRESH_TOKEN_SECRET,
+    cookie: {
+        name: 'refreshTkn',
+        options: {
+            sameSite: 'None',
+            secure: true,
+            httpOnly: true,
+            maxAge: 24 * 60 * 60 * 1000
+        }
+    }
+};
+
+export const ACCESS_TOKEN = {
+    secret: process.env.AUTH_ACCESS_TOKEN_SECRET
+};
+export const RESET_PASSWORD_TOKEN = {
+    expiry: process.env.RESET_PASSWORD_TOKEN_EXPIRY_MINS
 };
