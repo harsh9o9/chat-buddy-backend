@@ -29,7 +29,7 @@ export const ChatEvents = Object.freeze({
 });
 
 const production = {
-    URL: ['https://chat-buddy-harsh9o9.vercel.app', 'www.chatbuddy.online']
+    URL: 'https://www.chatbuddy.online'
 };
 const development = {
     URL: 'http://localhost:3000'
