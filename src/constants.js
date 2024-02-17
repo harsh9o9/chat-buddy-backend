@@ -28,17 +28,25 @@ export const ChatEvents = Object.freeze({
   MASTER_LOGOUT: 'masterLogout'
 });
 
-const production = {
-    URL: 'https://www.chatbuddy.online'
-};
-const development = {
-    URL: 'http://localhost:3000'
-};
-export const config =
-  process.env.NODE_ENV === "development" ? development : production;
+// const production = {
+//     URL: ['https://chat-buddy-harsh9o9.vercel.app', 'https://www.chatbuddy.online']
+// };
+// const development = {
+//     URL: 'http://localhost:3000'
+// };
+
+// export const config =
+//   process.env.NODE_ENV === "development" ? development : production;
 
 export const corsOptions = {
-    origin: config.URL,
+    origin: function (origin, callback) {
+        const allowedOrigins = ['http://localhost:3000', 'https://chat-buddy-harsh9o9.vercel.app', 'https://www.chatbuddy.online'];
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     exposedHeaders: ['WWW-Authenticate']
 };
