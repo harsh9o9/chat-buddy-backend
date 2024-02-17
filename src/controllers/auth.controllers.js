@@ -110,27 +110,29 @@ const logout = asyncHandler(async (req, res) => {
   // Authenticated user ID attached on `req` by authentication middleware
   const userId = req.userId;
   const user = await User.findById(userId);
-  console.log('user:', user);
+  console.log('logout user:', user);
 
   const cookies = req.cookies;
   // const authHeader = req.header("Authorization");
   const refreshToken = cookies[REFRESH_TOKEN.cookie.name];
+  console.log('logout refreshToken: ', refreshToken);
   // Create a access token hash
   const rTknHash = crypto
     .createHmac("sha256", REFRESH_TOKEN.secret)
     .update(refreshToken)
     .digest("hex");
+    console.log('logiut rTknHash: ', rTknHash);
   let filteredTokens = user.tokens.filter((tokenObj) => tokenObj.token !== rTknHash);
   user.tokens = filteredTokens;
   await user.save();
-
+console.log('logout user.save: ', user);
   // Set cookie expiry to past date so it is destroyed
-  const expireCookieOptions = Object.assign({}, REFRESH_TOKEN.cookie.options, {
-    expires: new Date(1),
-  });
+//   const expireCookieOptions = Object.assign({}, REFRESH_TOKEN.cookie.options, {
+//     expires: new Date(1),
+//   });
 
   // Destroy refresh token cookie
-  res.cookie(REFRESH_TOKEN.cookie.name, "", expireCookieOptions);
+  res.clearCookie(REFRESH_TOKEN.cookie.name);
   res.status(200).json({
     success: true,
   });
