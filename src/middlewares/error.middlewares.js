@@ -12,7 +12,7 @@ const errorHandler = (err, req, res, next) => {
     /**
      * if error is not instance of {@link CustomError} then create a instance to maitain consistency
      */
-    if (!error instanceof CustomError) {
+    if ((!error) instanceof CustomError) {
         console.log('!error instanceof CustomError');
         // if error related to mongoose then 400 (Bad Request) else 500 (Server Error)
         const statusCode = error instanceof mongoose.Error ? 400 : 500;
