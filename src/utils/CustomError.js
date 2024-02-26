@@ -22,31 +22,31 @@
 //   }
 // }
 class CustomError extends Error {
-  /**
-   * Custom Error Constructor
-   * @param {any} [message] - Optional error payload
-   * @param {number} [statusCode] - Optional error http status code
-   * @param {string} [feedback=""] - Optional feedback message you want to provide
-   * @param {string} [stack] - provide stack trace to be send
-   */
-  constructor(
-    message = "Something went wrong",
-    statusCode,
-    feedback = "",
-    stack = ""
-  ) {
-    super(message);
-    this.name = "CustomError";
-    this.status = statusCode;
-    this.cause = message;
-    this.feedback = String(feedback);
+    /**
+     * Custom Error Constructor
+     * @param {any} [message] - Optional error payload
+     * @param {number} [statusCode] - Optional error http status code
+     * @param {string} [feedback=""] - Optional feedback message you want to provide
+     * @param {string} [stack] - provide stack trace to be send
+     */
+    constructor(
+        message = 'Something went wrong',
+        statusCode,
+        feedback = '',
+        stack = ''
+    ) {
+        super(message);
+        this.name = 'CustomError';
+        this.status = statusCode;
+        this.cause = message;
+        this.feedback = String(feedback);
 
-    if (stack) {
-      this.stack = stack;
-    } else {
-      Error.captureStackTrace(this, this.constructor);
+        if (stack) {
+            this.stack = stack;
+        } else {
+            Error.captureStackTrace(this, this.constructor);
+        }
     }
-  }
 }
 
 export { CustomError };

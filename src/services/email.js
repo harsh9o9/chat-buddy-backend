@@ -1,32 +1,32 @@
-import nodemailer from "nodemailer";
+import nodemailer from 'nodemailer';
 
 // Pull in Environments variables
 const EMAIL = {
-  authUser: process.env.AUTH_EMAIL_USERNAME,
-  authPass: process.env.AUTH_EMAIL_PASSWORD,
+    authUser: process.env.AUTH_EMAIL_USERNAME,
+    authPass: process.env.AUTH_EMAIL_PASSWORD
 };
 
 async function main(mailOptions) {
-  // Create reusable transporter object using the default SMTP transport
-  const transporter = nodemailer.createTransport({
-    host: "smtp.mailtrap.io",
-    port: 2525,
-    auth: {
-      user: EMAIL.authUser,
-      pass: EMAIL.authPass,
-    },
-  });
+    // Create reusable transporter object using the default SMTP transport
+    const transporter = nodemailer.createTransport({
+        host: 'smtp.mailtrap.io',
+        port: 2525,
+        auth: {
+            user: EMAIL.authUser,
+            pass: EMAIL.authPass
+        }
+    });
 
-  // Send mail with defined transport object
-  const info = await transporter.sendMail({
-    from: mailOptions?.from,
-    to: mailOptions?.to,
-    subject: mailOptions?.subject,
-    text: mailOptions?.text,
-    html: mailOptions?.html,
-  });
+    // Send mail with defined transport object
+    const info = await transporter.sendMail({
+        from: mailOptions?.from,
+        to: mailOptions?.to,
+        subject: mailOptions?.subject,
+        text: mailOptions?.text,
+        html: mailOptions?.html
+    });
 
-  return info;
+    return info;
 }
 
 export default main;
