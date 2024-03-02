@@ -135,7 +135,9 @@ const logout = asyncHandler(async (req, res) => {
     console.log('User:', user);
 
     // Extract refresh token from cookies
+    console.log('138 req.cookies: ', req.cookies);
     const refreshToken = req.cookies[REFRESH_TOKEN.cookie.name];
+    console.log('140 refreshToken: ', refreshToken), 'REFRESH_TOKEN.secret: ', REFRESH_TOKEN.secret;
 
     // Create a refresh token hash
     const rTknHash = crypto
