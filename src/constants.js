@@ -60,7 +60,7 @@ export const REFRESH_TOKEN = {
     cookie: {
         name: 'refreshTkn',
         options: {
-            sameSite: 'None',
+            sameSite: 'Strict',
             secure: true,
             httpOnly: true,
             maxAge: 24 * 60 * 60 * 1000
