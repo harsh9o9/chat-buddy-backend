@@ -1,7 +1,13 @@
+import {
+    ChatEvents,
+    REFRESH_TOKEN,
+    RESET_PASSWORD_TOKEN,
+} from '../constants.js';
+
 import { ApiResponse } from '../utils/ApiResponse.js';
 import AuthorizationError from '../utils/AuthorizationError.js';
-import { ChatEvents } from '../constants.js';
 import { CustomError } from '../utils/CustomError.js';
+import Mailgen from 'mailgen';
 import { User } from '../models/user.models.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import crypto from 'crypto';
@@ -9,54 +15,47 @@ import { emitSocketEventExceptUser } from '../socket/index.js';
 import jwt from 'jsonwebtoken';
 import sendEmail from '../services/sendEmail.js';
 
-// Top-level constants
-const REFRESH_TOKEN = {
-    secret: process.env.AUTH_REFRESH_TOKEN_SECRET,
-    cookie: {
-        name: 'refreshTkn',
-        options: {
-            sameSite: 'None',
-            secure: true,
-            httpOnly: true,
-            maxAge: 24 * 60 * 60 * 1000
-        }
-    }
-};
-
-const ACCESS_TOKEN = {
-    secret: process.env.AUTH_ACCESS_TOKEN_SECRET
-};
-const RESET_PASSWORD_TOKEN = {
-    expiry: process.env.RESET_PASSWORD_TOKEN_EXPIRY_MINS
-};
 
 /*
   1. LOGIN USER
 */
+/**
+ * Handles the user login request by validating credentials, generating access and refresh tokens, and setting the refresh token cookie.
+ *
+ * @param {Express.Request} req - The Express request object.
+ * @param {Express.Response} res - The Express response object.
+ * @returns {Promise<void>} A Promise that resolves when the user is successfully logged in.
+ */
 const loginUser = asyncHandler(async (req, res) => {
+    // Extract email and password from the request body
     const { email, password } = req.body;
+
+    // Check if email and password are provided
     if (!email || !password) {
-        console.log('email: ', email);
-        console.log('password: ', password);
-        throw new CustomError('username and password are required', 400);
+        console.log('Email:', email);
+        console.log('Password:', password);
+        throw new CustomError('Username and password are required', 400);
     }
 
-    /* Custom methods on user are defined in User model */
-    const user = await User.findByCredentials(email, password); // Identify and retrieve user by credentials
-    const accessToken = await user.generateAcessToken(); // Create Access Token
-    const refreshToken = await user.generateRefreshToken(); // Create Refresh Token
+    // Identify and retrieve the user by credentials
+    const user = await User.findByCredentials(email, password);
 
-    // SET refresh Token cookie in response
+    // Generate access and refresh tokens
+    const accessToken = await user.generateAcessToken();
+    const refreshToken = await user.generateRefreshToken();
+
+    // Set refresh token cookie in the response
     res.cookie(
         REFRESH_TOKEN.cookie.name,
         refreshToken,
         REFRESH_TOKEN.cookie.options
     );
 
-    return res.json(
+    // Respond with a success message and user details
+    res.json(
         new ApiResponse(
             200,
-            { user: user, accessToken }, // sending access token in response if client decides to save it
+            { user, accessToken }, // Sending access token in response if the client decides to save it
             'User logged in successfully'
         )
     );
@@ -65,117 +64,171 @@ const loginUser = asyncHandler(async (req, res) => {
 /*
   2. SIGN UP USER 
 */
+/**
+ * Handles the user registration request by creating a new user, generating access and refresh tokens, and setting the refresh token cookie.
+ *
+ * @param {Express.Request} req - The Express request object.
+ * @param {Express.Response} res - The Express response object.
+ * @returns {Promise<void>} A Promise that resolves when the user is successfully registered.
+ */
 const registerUser = asyncHandler(async (req, res) => {
-    const { username, fullName, email, password } = req.body;
-    console.log('email: ', email);
-    console.log('password: ', password);
-    const newUser = await User.create({
-        email,
-        username,
-        fullName,
-        password
-    });
-    await newUser.save(); // Save new User to DB
-    const accessToken = await newUser.generateAcessToken(); // Create Access Token
-    const refreshToken = await newUser.generateRefreshToken(); // Create Refresh Token
-    console.log('accessToken: ', accessToken);
-    console.log('refreshToken: ', refreshToken);
-    // SET refresh Token cookie in response
-    res.cookie(
-        REFRESH_TOKEN.cookie.name,
-        refreshToken,
-        REFRESH_TOKEN.cookie.options
-    );
+    try {
+        // Extract user information from the request body
+        const { username, fullName, email, password } = req.body;
 
-    if (!newUser) {
-        throw new CustomError(
-            'Something went wrong while registering the user',
-            500
+        // Create a new user in the database
+        const newUser = await User.create({
+            email,
+            username,
+            fullName,
+            password
+        });
+
+        // Save the new user to the database
+        await newUser.save();
+
+        // Generate access and refresh tokens
+        const accessToken = await newUser.generateAcessToken();
+        const refreshToken = await newUser.generateRefreshToken();
+
+        console.log('accessToken:', accessToken);
+        console.log('refreshToken:', refreshToken);
+
+        // Set refresh token cookie in the response
+        res.cookie(
+            REFRESH_TOKEN.cookie.name,
+            refreshToken,
+            REFRESH_TOKEN.cookie.options
         );
-    }
 
-    return res.json(
-        new ApiResponse(
-            201,
-            { user: newUser, accessToken },
-            'User registered successfully'
-        )
-    );
+        // Check if the user was successfully created
+        if (!newUser) {
+            throw new CustomError(
+                'Something went wrong while registering the user',
+                500
+            );
+        }
+
+        // Respond with a success message and user details
+        return res.json(
+            new ApiResponse(
+                201,
+                { user: newUser, accessToken },
+                'User registered successfully'
+            )
+        );
+    } catch (error) {
+        // Forward the error to the error handling middleware
+        next(error);
+    }
 });
 
 /*
   3. LOGOUT USER
 */
+/**
+ * Handles the logout request by invalidating the current refresh token for the user.
+ *
+ * @param {Express.Request} req - The Express request object.
+ * @param {Express.Response} res - The Express response object.
+ * @returns {Promise<void>} A Promise that resolves when the user is logged out.
+ */
 const logout = asyncHandler(async (req, res) => {
     // Authenticated user ID attached on `req` by authentication middleware
     const userId = req.userId;
-    const user = await User.findById(userId);
-    console.log('logout user:', user);
 
-    const cookies = req.cookies;
-    // const authHeader = req.header("Authorization");
-    const refreshToken = cookies[REFRESH_TOKEN.cookie.name];
-    console.log('logout refreshToken: ', refreshToken);
-    // Create a access token hash
+    // Find the user by ID
+    const user = await User.findById(userId);
+    console.log('User:', user);
+
+    // Extract refresh token from cookies
+    const refreshToken = req.cookies[REFRESH_TOKEN.cookie.name];
+
+    // Create a refresh token hash
     const rTknHash = crypto
         .createHmac('sha256', REFRESH_TOKEN.secret)
         .update(refreshToken)
         .digest('hex');
-    console.log('logiut rTknHash: ', rTknHash);
-    let filteredTokens = user.tokens.filter(
+
+    // Filter out the current token from the user's tokens
+    const filteredTokens = user.tokens.filter(
         (tokenObj) => tokenObj.token !== rTknHash
     );
-    user.tokens = filteredTokens;
-    await user.save();
-    console.log('logout user.save: ', user);
-    // Set cookie expiry to past date so it is destroyed
-    //   const expireCookieOptions = Object.assign({}, REFRESH_TOKEN.cookie.options, {
-    //     expires: new Date(1),
-    //   });
 
-    // Destroy refresh token cookie
+    // Update the user's tokens with the filtered tokens
+    user.tokens = filteredTokens;
+
+    // Save the updated user information
+    await user.save();
+
+    // Destroy the refresh token cookie
     res.clearCookie(REFRESH_TOKEN.cookie.name);
+
+    // Respond with success message
     res.status(200).json({
         success: true
     });
 });
+
 /*
   4. LOGOUT USER FROM ALL DEVICES
 */
+/**
+ * Handles the logout from all devices request by invalidating all tokens for the user.
+ *
+ * @param {Express.Request} req - The Express request object.
+ * @param {Express.Response} res - The Express response object.
+ * @returns {Promise<void>} A Promise that resolves when the user is logged out from all devices.
+ */
 const logoutAllDevices = asyncHandler(async (req, res) => {
     // Authenticated user ID attached on `req` by authentication middleware
     const userId = req.userId;
+
+    // Find the user by ID
     const user = await User.findById(userId);
 
+    // Remove all tokens for the user
     user.tokens = undefined;
+
+    // Save the updated user information
     await user.save();
 
+    // Emit socket event to notify other users about the master logout
     emitSocketEventExceptUser(req, userId, ChatEvents.MASTER_LOGOUT);
 
-    // Set cookie expiry to past date to mark for destruction
-    const expireCookieOptions = Object.assign(
-        {},
-        REFRESH_TOKEN.cookie.options,
-        {
-            expires: new Date(1)
-        }
-    );
+    // Set cookie expiry to a past date to mark it for destruction
+    const expireCookieOptions = {
+        ...REFRESH_TOKEN.cookie.options,
+        expires: new Date(1)
+    };
 
-    // Destroy refresh token cookie
+    // Destroy the refresh token cookie
     res.cookie(REFRESH_TOKEN.cookie.name, '', expireCookieOptions);
+
+    // Respond with success message
     res.status(200).json({
         success: true
     });
 });
+
 /*
   5. REGENERATE NEW ACCESS TOKEN
 */
+
+/**
+ * Handles the refresh access token request to generate a new access token.
+ *
+ * @param {Express.Request} req - The Express request object.
+ * @param {Express.Response} res - The Express response object.
+ * @param {Express.NextFunction} next - The Express next middleware function.
+ * @returns {Promise<void>} A Promise that resolves when the new access token is generated and sent.
+ */
 const refreshAccessToken = async (req, res, next) => {
     try {
-        const cookies = req.cookies;
+        // Extract refresh token from cookies
+        const refreshToken = req.cookies[REFRESH_TOKEN.cookie.name];
 
-        const refreshToken = cookies[REFRESH_TOKEN.cookie.name];
-
+        // Throw an error if refresh token is missing
         if (!refreshToken) {
             throw new AuthorizationError(
                 'Authentication error!',
@@ -189,19 +242,26 @@ const refreshAccessToken = async (req, res, next) => {
             );
         }
 
+        // Verify and decode the refresh token
         const decodedRefreshTkn = jwt.verify(
             refreshToken,
             REFRESH_TOKEN.secret
         );
+
+        // Hash the refresh token for comparison
         const rTknHash = crypto
             .createHmac('sha256', REFRESH_TOKEN.secret)
             .update(refreshToken)
             .digest('hex');
+
+        // Find the user with the matching refresh token
         const userWithRefreshTkn = await User.findOne({
             _id: decodedRefreshTkn._id,
             'tokens.token': rTknHash
         });
-        if (!userWithRefreshTkn)
+
+        // Throw an error if no user is found
+        if (!userWithRefreshTkn) {
             throw new AuthorizationError(
                 'Authentication Error',
                 undefined,
@@ -210,23 +270,23 @@ const refreshAccessToken = async (req, res, next) => {
                     realm: 'reauth'
                 }
             );
+        }
 
-        // GENERATE NEW ACCESSTOKEN
+        // Generate a new access token
         const newAtkn = await userWithRefreshTkn.generateAcessToken();
-        console.log('newAtkn: ', newAtkn);
-        // GENERATE NEW REFRESHTOKEN
-        // const newRtkn = await userWithRefreshTkn.generateRefreshToken();
 
+        // Set response headers
         res.status(201);
         res.set({ 'Cache-Control': 'no-store', Pragma: 'no-cache' });
 
-        // Send response with NEW accessToken
+        // Send response with the new access token
         res.json({
             success: true,
             accessToken: newAtkn
         });
     } catch (error) {
-        if (['JsonWebTokenError', 'TokenExpiredError'].includes(error?.name))
+        // Handle token-related errors and pass other errors to the next middleware
+        if (['JsonWebTokenError', 'TokenExpiredError'].includes(error?.name)) {
             return next(
                 new AuthorizationError(
                     error,
@@ -238,6 +298,7 @@ const refreshAccessToken = async (req, res, next) => {
                     }
                 )
             );
+        }
         next(error);
     }
 };
