@@ -1,20 +1,18 @@
 import {
     ChatEvents,
     REFRESH_TOKEN,
-    RESET_PASSWORD_TOKEN,
+    RESET_PASSWORD_TOKEN
 } from '../constants.js';
 
 import { ApiResponse } from '../utils/ApiResponse.js';
 import AuthorizationError from '../utils/AuthorizationError.js';
 import { CustomError } from '../utils/CustomError.js';
-import Mailgen from 'mailgen';
 import { User } from '../models/user.models.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import crypto from 'crypto';
 import { emitSocketEventExceptUser } from '../socket/index.js';
 import jwt from 'jsonwebtoken';
 import sendEmail from '../services/sendEmail.js';
-
 
 /*
   1. LOGIN USER
@@ -72,55 +70,50 @@ const loginUser = asyncHandler(async (req, res) => {
  * @returns {Promise<void>} A Promise that resolves when the user is successfully registered.
  */
 const registerUser = asyncHandler(async (req, res) => {
-    try {
-        // Extract user information from the request body
-        const { username, fullName, email, password } = req.body;
+    // Extract user information from the request body
+    const { username, fullName, email, password } = req.body;
 
-        // Create a new user in the database
-        const newUser = await User.create({
-            email,
-            username,
-            fullName,
-            password
-        });
+    // Create a new user in the database
+    const newUser = await User.create({
+        email,
+        username,
+        fullName,
+        password
+    });
 
-        // Save the new user to the database
-        await newUser.save();
+    // Save the new user to the database
+    await newUser.save();
 
-        // Generate access and refresh tokens
-        const accessToken = await newUser.generateAcessToken();
-        const refreshToken = await newUser.generateRefreshToken();
+    // Generate access and refresh tokens
+    const accessToken = await newUser.generateAcessToken();
+    const refreshToken = await newUser.generateRefreshToken();
 
-        console.log('accessToken:', accessToken);
-        console.log('refreshToken:', refreshToken);
+    console.log('accessToken:', accessToken);
+    console.log('refreshToken:', refreshToken);
 
-        // Set refresh token cookie in the response
-        res.cookie(
-            REFRESH_TOKEN.cookie.name,
-            refreshToken,
-            REFRESH_TOKEN.cookie.options
+    // Set refresh token cookie in the response
+    res.cookie(
+        REFRESH_TOKEN.cookie.name,
+        refreshToken,
+        REFRESH_TOKEN.cookie.options
+    );
+
+    // Check if the user was successfully created
+    if (!newUser) {
+        throw new CustomError(
+            'Something went wrong while registering the user',
+            500
         );
-
-        // Check if the user was successfully created
-        if (!newUser) {
-            throw new CustomError(
-                'Something went wrong while registering the user',
-                500
-            );
-        }
-
-        // Respond with a success message and user details
-        return res.json(
-            new ApiResponse(
-                201,
-                { user: newUser, accessToken },
-                'User registered successfully'
-            )
-        );
-    } catch (error) {
-        // Forward the error to the error handling middleware
-        next(error);
     }
+
+    // Respond with a success message and user details
+    return res.json(
+        new ApiResponse(
+            201,
+            { user: newUser, accessToken },
+            'User registered successfully'
+        )
+    );
 });
 
 /*
