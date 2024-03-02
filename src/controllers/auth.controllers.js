@@ -7,12 +7,23 @@ import {
 import { ApiResponse } from '../utils/ApiResponse.js';
 import AuthorizationError from '../utils/AuthorizationError.js';
 import { CustomError } from '../utils/CustomError.js';
+import Mailgen from 'mailgen';
 import { User } from '../models/user.models.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import crypto from 'crypto';
 import { emitSocketEventExceptUser } from '../socket/index.js';
 import jwt from 'jsonwebtoken';
 import sendEmail from '../services/sendEmail.js';
+
+/**
+ * Enum representing types of email bodies for different scenarios.
+ * @readonly
+ * @enum {string}
+ */
+const EMAIL_BODY_TYPES = Object.freeze({
+    RESET_PASSWORD_LINK: 'RESET_PASSWORD_LINK',
+    RESET_PASSWORD_SUCCESS: 'RESET_PASSWORD_SUCCESS'
+});
 
 /*
   1. LOGIN USER
@@ -301,90 +312,87 @@ const refreshAccessToken = async (req, res, next) => {
 /*
   6. FORGOT PASSWORD
 */
-const forgotPassword = async (req, res, next) => {
+/**
+ * Handles the forgot password request by sending a reset link to the user's email.
+ *
+ * @param {Express.Request} req - The Express request object.
+ * @param {Express.Response} res - The Express response object.
+ * @param {Express.NextFunction} next - The Express next middleware function.
+ * @returns {Promise<void>} A Promise that resolves when the password reset email is sent.
+ */
+const forgotPassword = asyncHandler(async (req, res) => {
+  console.log('req.headers.host: ', req.headers.host);
+  console.log('req.headers.origin: ', req.headers.origin);
+  console.log('req.headers.referer: ', req.headers.referer);
     const MSG = `If ${req.body?.email} is found with us, we've sent an email to it with instructions to reset your password.`;
-    try {
-        // TODO: make validations before
-        const email = req.body.email;
 
-        const user = await User.findOne({ email });
-        // If email is not found, we throw an exception BUT with 200 status code
-        // because it is a security vulnerability to inform users
-        // that the Email is not found.
-        // To avoid username enumeration attacks, no extra response data is provided when an email is successfully sent. (The same response is provided when the username is invalid.)
-        if (!user) throw new CustomError('Reset link sent', 200, MSG);
+    // Extract email from the request body
+    const email = req.body.email;
 
-        let resetToken = await user.generateResetToken();
-        resetToken = encodeURIComponent(resetToken);
+    // Find user by email
+    const user = await User.findOne({ email });
 
-        const resetPath = req.header('X-reset-base');
-        const origin = req.header('Origin');
-
-        const resetUrl = resetPath
-            ? `${resetPath}/${resetToken}`
-            : `${origin}/resetpass/${resetToken}`;
-        console.log('Password reset URL: %s', resetUrl);
-
-        const emailMessage = `
-            <h1>You have requested to change your password</h1>
-            <p>You are receiving this because someone(hopefully you) has requested to reset password for your account.<br/>
-              Please click on the following link, or paste in your browser to complete the password reset.
-            </p>
-            <p>
-              <a href=${resetUrl} clicktracking=off>${resetUrl}</a>
-            </p>
-            <p>
-              <em>
-                If you did not request this, you can safely ignore this email and your password will remain unchanged.
-              </em>
-            </p>
-            <p>
-            <strong>DO NOT share this link with anyone else!</strong><br />
-              <small>
-                <em>
-                  This password reset link will <strong>expire after ${
-                      RESET_PASSWORD_TOKEN.expiry || 5
-                  } minutes.</strong>
-                </em>
-              <small/>
-            </p>
-        `;
-
-        try {
-            await sendEmail({
-                to: user.email,
-                html: emailMessage,
-                subject: 'Reset password'
-            });
-
-            res.json({
-                message: 'Reset link sent',
-                feedback: MSG,
-                success: true
-            });
-        } catch (error) {
-            user.resetpasswordtoken = undefined;
-            user.resetpasswordtokenexpiry = undefined;
-            await user.save();
-
-            console.log(error.message);
-            throw new CustomError('Internal issues standing in the way', 500);
-        }
-    } catch (err) {
-        next(err);
+    // If email is not found, throw an exception with a 200 status code
+    if (!user) {
+        throw new CustomError('Reset link sent', 200, MSG);
     }
-};
+
+    // Generate and encode reset token
+    let resetToken = await user.generateResetToken();
+    resetToken = encodeURIComponent(resetToken);
+
+    // Build reset URL
+    const resetPath = req.header('X-reset-base');
+    const origin = req.header('Origin');
+    const resetUrl = resetPath
+        ? `${resetPath}/${resetToken}`
+        : `${origin}/resetpass/${resetToken}`;
+
+    // Prepare email body data
+    const emailBodyData = {
+        fullName: `${user.fullName.firstName} ${user.fullName.lastName}`,
+        resetUrl
+    };
+
+    // Generate email message
+    const emailMessage = _getEmailBody(
+        EMAIL_BODY_TYPES.RESET_PASSWORD_LINK,
+        emailBodyData
+    );
+
+    try {
+        // Send password reset email
+        await sendEmail({
+            to: user?.email,
+            html: emailMessage,
+            subject: 'Reset your chat-buddy password request'
+        });
+
+        res.json({
+            message: 'Reset link sent',
+            feedback: MSG,
+            success: true
+        });
+    } catch (error) {
+        user.resetpasswordtoken = undefined;
+        user.resetpasswordtokenexpiry = undefined;
+        await user.save();
+
+        console.log(error.message);
+        throw new CustomError('Internal issues standing in the way', 500);
+    }
+});
 /*
   7. RESET PASSWORD
 */
-
+/**
+ * Handles the reset password request.
+ *
+ * @param {Express.Request} req - The Express request object.
+ * @param {Express.Response} res - The Express response object.
+ * @returns {Promise<void>} A Promise that resolves when the password reset is successful.
+ */
 const resetPassword = asyncHandler(async (req, res) => {
-    console.log('req.params: ', req.params);
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        throw new CustomError(errors.array(), 422);
-    }
-
     const resetToken = new String(req.params.resetToken);
 
     const [tokenValue, tokenSecret] = decodeURIComponent(resetToken).split('+');
@@ -425,6 +433,102 @@ const resetPassword = asyncHandler(async (req, res) => {
     });
 });
 
+/**
+ * PRIVATE METHODS
+ */
+
+/**
+ * Generates an email body based on the specified type and configuration data.
+ *
+ * @param {string} emailBodyType - The type of email body to generate. Should be one of the values from EMAIL_BODY_TYPES.
+ * @param {Object} emailConfigData - Configuration data required for generating the email body.
+ * @returns {string|null} The generated email body HTML or null if the emailBodyType is invalid.
+ */
+const _getEmailBody = (emailBodyType, emailConfigData) => {
+    if (!Object.values(EMAIL_BODY_TYPES).includes(emailBodyType)) return null;
+
+    const MailGenerator = new Mailgen({
+        theme: 'cerberus',
+        product: {
+            name: 'ChatBuddy',
+            link: 'https://chat-buddy-harsh9o9.vercel.app'
+        }
+    });
+
+    let email;
+    switch (emailBodyType) {
+        case EMAIL_BODY_TYPES.RESET_PASSWORD_LINK:
+            email = _getResetPasswordRequestEmailConfig(emailConfigData);
+            break;
+        case EMAIL_BODY_TYPES.RESET_PASSWORD_SUCCESS:
+            email = _getResetPasswordSuccessEmailConfig(emailConfigData);
+            break;
+        default:
+    }
+
+    if (!email) return null;
+    const emailBody = MailGenerator.generate(email);
+
+    return emailBody;
+};
+
+/**
+ * Generates the email configuration for a reset password request scenario.
+ *
+ * @param {Object} emailConfigData - Configuration data required for generating the email body.
+ * @param {string} emailConfigData.fullName - The full name of the user.
+ * @param {string} emailConfigData.resetUrl - The URL to reset the password.
+ * @returns {Object} The email configuration.
+ */
+const _getResetPasswordRequestEmailConfig = ({ fullName, resetUrl }) => {
+    const email = {
+        body: {
+            name: fullName,
+            intro: 'You have received this email because a password reset request for your account was received.',
+            action: {
+                instructions: 'Click the button below to reset your password:',
+                button: {
+                    text: 'Reset your password',
+                    link: resetUrl
+                }
+            },
+            outro: `If you did not request this, you can safely ignore this email and your password will remain unchanged. <br /> <strong>Do not forward or give this link to anyone.</strong> <br /> This password reset link will <strong>expire after ${
+                RESET_PASSWORD_TOKEN.expiry || 5
+            } minutes.</strong>`
+        }
+    };
+
+    return email;
+};
+
+/**
+ * Generates the email configuration for a reset password success scenario.
+ *
+ * @param {Object} emailConfigData - Configuration data required for generating the email body.
+ * @param {string} emailConfigData.fullName - The full name of the user.
+ * @returns {Object} The email configuration.
+ */
+const _getResetPasswordSuccessEmailConfig = ({ URL, fullName }) => {
+    const LOGIN_PAGE_URL = `${URL}/login`;
+    const FORGOT_PASSWORD_PAGE_URL = `${URL}/forgot-password`;
+
+    const email = {
+        body: {
+            name: fullName,
+            intro: 'This is a confirmation that you have changed Password for your account.',
+            action: {
+                instructions: 'Click the button below to login:',
+                button: {
+                    text: 'Login',
+                    link: LOGIN_PAGE_URL
+                }
+            },
+            outro: `NOTE: If you did not request this, Please visit <a href=${FORGOT_PASSWORD_PAGE_URL}>${FORGOT_PASSWORD_PAGE_URL}</a> to reset your password. <br /> <strong>Please safe keep your credentials for future. </strong>`
+        }
+    };
+
+    return email;
+};
 export {
     loginUser,
     registerUser,

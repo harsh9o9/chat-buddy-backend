@@ -67,7 +67,9 @@ router.route('/reauth').post(refreshAccessToken);
  * @param {string} path - /api/users/forgotpass
  * @description - Send password reset email link
  */
-router.route('/forgotpass').post(forgotPasswordValidator, forgotPassword);
+router
+    .route('/forgotpass')
+    .post(forgotPasswordValidator, errorValidator, forgotPassword);
 
 /**
  * @method - POST
@@ -76,14 +78,14 @@ router.route('/forgotpass').post(forgotPasswordValidator, forgotPassword);
  */
 router
     .route('/resetpass/:resetToken')
-    .patch(resetPasswordValidator, resetPassword);
+    .post(resetPasswordValidator, errorValidator, resetPassword);
 
 /**
  * @method - GET
  * @param {string} path - /api/users/me
  * @description - Get authenticated user
  */
-router.get('/me', requireAuthentication, fetchAuthUserProfile);
+// router.get("/me", requireAuthentication, fetchAuthUserProfile);
 
 // /**
 //  * @method - GET
