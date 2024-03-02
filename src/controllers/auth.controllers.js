@@ -132,32 +132,33 @@ const logout = asyncHandler(async (req, res) => {
 
     // Find the user by ID
     const user = await User.findById(userId);
-    console.log('User:', user);
 
     // Extract refresh token from cookies
-    console.log('138 req.cookies: ', req.cookies);
     const refreshToken = req.cookies[REFRESH_TOKEN.cookie.name];
-    console.log('140 refreshToken: ', refreshToken), 'REFRESH_TOKEN.secret: ', REFRESH_TOKEN.secret;
 
-    // Create a refresh token hash
-    const rTknHash = crypto
-        .createHmac('sha256', REFRESH_TOKEN.secret)
-        .update(refreshToken)
-        .digest('hex');
+    //TODO: This check is temp fix, as in incognito mode refresh token cookie is not set causing logout to fail
+    if (refreshToken) {
+      // Create a refresh token hash
+      const rTknHash = crypto
+          .createHmac('sha256', REFRESH_TOKEN.secret)
+          .update(refreshToken)
+          .digest('hex');
+  
+      // Filter out the current token from the user's tokens
+      const filteredTokens = user.tokens.filter(
+          (tokenObj) => tokenObj.token !== rTknHash
+      );
+  
+      // Update the user's tokens with the filtered tokens
+      user.tokens = filteredTokens;
+  
+      // Save the updated user information
+      await user.save();
+      
+      // Destroy the refresh token cookie
+      res.clearCookie(REFRESH_TOKEN.cookie.name);
+    }
 
-    // Filter out the current token from the user's tokens
-    const filteredTokens = user.tokens.filter(
-        (tokenObj) => tokenObj.token !== rTknHash
-    );
-
-    // Update the user's tokens with the filtered tokens
-    user.tokens = filteredTokens;
-
-    // Save the updated user information
-    await user.save();
-
-    // Destroy the refresh token cookie
-    res.clearCookie(REFRESH_TOKEN.cookie.name);
 
     // Respond with success message
     res.status(200).json({
