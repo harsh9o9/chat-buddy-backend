@@ -2,26 +2,23 @@ import nodemailer from 'nodemailer';
 
 // Pull in Environments variables
 const EMAIL_OPTIONS = Object.freeze({
-    authUser: process.env.AUTH_EMAIL_USERNAME,
-    authPass: process.env.AUTH_EMAIL_PASSWORD,
-    host: process.env.MAIL_TRAP_HOST,
-    post: process.env.MAIL_TRAP_PORT
+    password: process.env.EMAIL_PASSWORD,
+    emailFrom: process.env.EMAIL_FROM,
 });
 
 async function main(mailOptions) {
     // Create reusable transporter object using the default SMTP transport
-    const transporter = nodemailer.createTransport({
-        host: EMAIL_OPTIONS.host,
-        port: EMAIL_OPTIONS.port,
+    let transporter = nodemailer.createTransport({
+        service: 'gmail', // Use your email provider
         auth: {
-            user: EMAIL_OPTIONS.authUser,
-            pass: EMAIL_OPTIONS.authPass
+            user: EMAIL_OPTIONS.emailFrom,
+            pass: EMAIL_OPTIONS.password
         }
     });
 
     // Send mail with defined transport object
     const info = await transporter.sendMail({
-        from: mailOptions?.from,
+        from: mailOptions.from,
         to: mailOptions?.to,
         subject: mailOptions?.subject,
         text: mailOptions?.text,

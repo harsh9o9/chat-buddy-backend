@@ -321,9 +321,6 @@ const refreshAccessToken = async (req, res, next) => {
  * @returns {Promise<void>} A Promise that resolves when the password reset email is sent.
  */
 const forgotPassword = asyncHandler(async (req, res) => {
-  console.log('req.headers.host: ', req.headers.host);
-  console.log('req.headers.origin: ', req.headers.origin);
-  console.log('req.headers.referer: ', req.headers.referer);
     const MSG = `If ${req.body?.email} is found with us, we've sent an email to it with instructions to reset your password.`;
 
     // Extract email from the request body
@@ -417,14 +414,25 @@ const resetPassword = asyncHandler(async (req, res) => {
     user.resetpasswordtokenexpiry = undefined;
 
     await user.save();
-
+    const resetPath = req.header('X-reset-base');
+    const origin = req.header('Origin');
     // Email to notify owner of the account
-    const message = `<h3>This is a confirmation that you have changed Password for your account.</h3>`;
+    // Prepare email body data
+    const emailBodyData = {
+        fullName: `${user.fullName.firstName} ${user.fullName.lastName}`,
+        URL: resetPath ? resetPath : origin
+    };
+
+    // Generate email message
+    const emailMessage = _getEmailBody(
+        EMAIL_BODY_TYPES.RESET_PASSWORD_SUCCESS,
+        emailBodyData
+    );
     // No need to await
     sendEmail({
         to: user.email,
-        html: message,
-        subject: 'Password changed'
+        html: emailMessage,
+        subject: 'Password changed Successfully'
     });
 
     res.json({
@@ -451,7 +459,7 @@ const _getEmailBody = (emailBodyType, emailConfigData) => {
         theme: 'cerberus',
         product: {
             name: 'ChatBuddy',
-            link: 'https://chat-buddy-harsh9o9.vercel.app'
+            link: 'https://chatbuddy.online'
         }
     });
 
