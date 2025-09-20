@@ -43,6 +43,7 @@ export const corsOptions = {
         const allowedOrigins = [
             'http://localhost:3000',
             'https://chat-buddy-harsh9o9.vercel.app',
+            'https://chat-buddy-frontend.vercel.app',
             'https://www.chatbuddy.online'
         ];
         if (!origin || allowedOrigins.includes(origin)) {
