@@ -64,7 +64,12 @@ const loginUser = asyncHandler(async (req, res) => {
     res.json(
         new ApiResponse(
             200,
-            { user, accessToken }, // Sending access token in response if the client decides to save it
+            { 
+                user,
+                accessToken,
+                // include refreshToken as fallback for cross-site cookie issue
+                refreshToken: process.env.NODE_ENV === 'production' ? refreshToken : undefined
+             },
             'User logged in successfully'
         )
     );
@@ -232,7 +237,14 @@ const logoutAllDevices = asyncHandler(async (req, res) => {
 const refreshAccessToken = async (req, res, next) => {
     try {
         // Extract refresh token from cookies
-        const refreshToken = req.cookies[REFRESH_TOKEN.cookie.name];
+        let refreshToken = req.cookies[REFRESH_TOKEN.cookie.name];
+
+        if (!refreshToken && req.headers.authorization) {
+            const authHeader = req.headers.authorization;
+            if (authHeader?.startsWith('Refresh ')) {
+                refreshToken = authHeader.substring(8);
+            }
+        }
 
         // Throw an error if refresh token is missing
         if (!refreshToken) {
