@@ -68,7 +68,7 @@ const loginUser = asyncHandler(async (req, res) => {
                 user,
                 accessToken,
                 // include refreshToken as fallback for cross-site cookie issue
-                refreshToken: process.env.NODE_ENV === 'production' ? refreshToken : undefined
+                refreshToken: refreshToken
              },
             'User logged in successfully'
         )
